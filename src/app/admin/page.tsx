@@ -206,7 +206,7 @@ export default function AdminPage() {
               <div className="relative">
                 <input
                   type="password"
-                  placeholder="Enter passcode (e.g. swabiadmin)"
+                  placeholder="Enter passcode (e.g. shezihere)"
                   value={passcode}
                   onChange={(e) => setPasscode(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:border-red-500 focus:ring-1 focus:ring-red-500 text-sm font-mono"
@@ -759,9 +759,17 @@ export default function AdminPage() {
                         <td className="p-3.5 font-bold text-red-400">{u.bloodGroup}</td>
                         <td className="p-3.5">{u.villageOrArea}, {u.tehsil}</td>
                         <td className="p-3.5">
-                          {u.isDonor ? (
+                          {u.role === 'DONOR' || (u.isDonor && u.role !== 'BOTH' && u.role !== 'ACCEPTER') ? (
                             <span className="bg-emerald-950 text-emerald-300 border border-emerald-700 px-2 py-0.5 rounded text-[10px] font-bold">
-                              ✓ Registered Donor
+                              🩸 Registered Donor
+                            </span>
+                          ) : u.role === 'ACCEPTER' ? (
+                            <span className="bg-rose-950 text-rose-300 border border-rose-700 px-2 py-0.5 rounded text-[10px] font-bold">
+                              🏥 Blood Accepter
+                            </span>
+                          ) : u.role === 'BOTH' ? (
+                            <span className="bg-purple-950 text-purple-300 border border-purple-700 px-2 py-0.5 rounded text-[10px] font-bold">
+                              🤝 Donor & Accepter
                             </span>
                           ) : (
                             <span className="bg-slate-800 text-slate-400 px-2 py-0.5 rounded text-[10px]">

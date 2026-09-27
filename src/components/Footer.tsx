@@ -139,7 +139,7 @@ export const Footer: React.FC = () => {
 
       {/* Bottom Legal */}
       <div className="border-t border-slate-900 py-6 px-4 text-center text-xs text-slate-500">
-        <p>© {new Date().getFullYear()} Swabi Heroes Blood Network (صوابۍ وینه بخښونکي). Dedicated to saving lives in Swabi, KP, Pakistan.</p>
+        <p>© {new Date().getFullYear()} Swabi Heroes Blood Network (صوابۍ وینه بخښونکي). Dedicated to saving lives in Swabi, KP, Pakistan. By <a href="https://shezitechsolution.com" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300">Shezi Tech Solution</a></p>
       </div>
     </footer>
   );

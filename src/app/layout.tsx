@@ -7,9 +7,18 @@ export const metadata: Metadata = {
   title: "Swabi Heroes | Emergency Blood Donation & SOS Network (صوابۍ وینه بخښونکي)",
   description: "Official blood donation network for Swabi district (Swabi, Topi, Razzar, Chota Lahor). Find donors and connect with BKMC, DHQ Swabi, and THQ emergency services.",
   icons: {
-    icon: '/logo.png',
-    apple: '/icon-192.png'
-  }
+    icon: [
+      { url: '/logo.png', type: 'image/png' },
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icon-512.png', sizes: '512x512', type: 'image/png' }
+    ],
+    shortcut: '/logo.png',
+    apple: [
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/logo.png' }
+    ]
+  },
+  manifest: '/manifest.json'
 };
 
 export default function RootLayout({

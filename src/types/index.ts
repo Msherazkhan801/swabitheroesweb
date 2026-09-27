@@ -31,6 +31,7 @@ export interface Donor {
 export interface BloodRequest {
   id: string;
   patientName: string;
+  relationship?: 'Myself' | 'Relative' | 'Friend' | 'Emergency Patient' | string;
   bloodGroup: BloodGroup;
   unitsNeeded: number;
   hospitalName: string;
@@ -63,20 +64,30 @@ export interface Hospital {
   googleMapsUrl: string;
 }
 
+export type UserRole = 'DONOR' | 'ACCEPTER' | 'BOTH';
+
 export interface UserProfile {
   uid: string;
   fullName: string;
-  email: string;
+  email?: string;
   phoneNumber: string;
   whatsappNumber?: string;
   bloodGroup: BloodGroup;
   tehsil: Tehsil;
   villageOrArea: string;
+  role: UserRole;
   isDonor: boolean;
   totalDonations: number;
   lastDonationDate?: string;
   isAvailable: boolean;
   registeredAt: string;
+  patientDetails?: string;
+  preferredHospital?: string;
+  notes?: string;
+  age?: number;
+  gender?: 'Male' | 'Female' | 'Other';
+  donorId?: string;
+  password?: string;
 }
 
 export interface FilterState {

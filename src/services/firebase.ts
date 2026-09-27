@@ -17,6 +17,7 @@ import {
 } from 'firebase/firestore';
 import { 
   getAuth, 
+  createUserWithEmailAndPassword,
   signInWithEmailAndPassword, 
   signOut, 
   onAuthStateChanged,
@@ -62,6 +63,7 @@ export {
   query, 
   orderBy, 
   serverTimestamp,
+  createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,

@@ -1,9 +1,20 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useData } from '../context/DataContext';
 import { BloodGroup, Tehsil, UrgencyLevel } from '../types';
-import { X, Heart, AlertTriangle, Building2, User, Phone, CheckCircle2 } from 'lucide-react';
+import { 
+  X, 
+  Heart, 
+  AlertTriangle, 
+  Building2, 
+  User, 
+  Phone, 
+  CheckCircle2, 
+  Users,
+  Sparkles,
+  MapPin
+} from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 interface RequestBloodModalProps {
@@ -13,14 +24,19 @@ interface RequestBloodModalProps {
 
 const BLOOD_GROUPS: BloodGroup[] = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 const TEHSILS: Tehsil[] = ['Swabi', 'Topi', 'Razzar', 'Chota Lahor'];
+const RELATIONSHIPS = ['Myself', 'Mother', 'Father', 'Brother', 'Sister', 'Son / Daughter', 'Relative', 'Friend', 'Emergency Patient'];
 
 export const RequestBloodModal: React.FC<RequestBloodModalProps> = ({ isOpen, onClose }) => {
-  const { addRequest } = useData();
+  const { addRequest, currentProfile } = useData();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
 
+  // Mode: Myself vs Relative vs General
+  const [requestFor, setRequestFor] = useState<'Myself' | 'Relative' | 'Emergency'>('Relative');
+
   const [formData, setFormData] = useState({
     patientName: '',
+    relationship: 'Relative',
     bloodGroup: 'O+' as BloodGroup,
     unitsNeeded: 1,
     hospitalName: 'Bacha Khan Medical Complex (MTI BKMC)',
@@ -29,15 +45,81 @@ export const RequestBloodModal: React.FC<RequestBloodModalProps> = ({ isOpen, on
     contactPhone: '',
     whatsappNumber: '',
     urgency: 'HIGH' as UrgencyLevel,
-    reason: 'Emergency Surgery / Transfusion'
+    reason: 'Emergency Surgery / Urgent Transfusion'
   });
 
+  // Pre-fill from current profile if available
+  useEffect(() => {
+    if (isOpen) {
+      if (currentProfile) {
+        setFormData({
+          patientName: requestFor === 'Myself' ? currentProfile.fullName : '',
+          relationship: requestFor,
+          bloodGroup: requestFor === 'Myself' ? currentProfile.bloodGroup : 'O+',
+          unitsNeeded: 1,
+          hospitalName: 'Bacha Khan Medical Complex (MTI BKMC)',
+          tehsil: currentProfile.tehsil || 'Swabi',
+          contactPerson: currentProfile.fullName || '',
+          contactPhone: currentProfile.phoneNumber || '',
+          whatsappNumber: currentProfile.whatsappNumber || currentProfile.phoneNumber || '',
+          urgency: 'HIGH',
+          reason: 'Emergency Surgery / Urgent Transfusion'
+        });
+      } else {
+        setFormData(prev => ({
+          ...prev,
+          patientName: '',
+          relationship: requestFor,
+          contactPerson: '',
+          contactPhone: '',
+          whatsappNumber: '',
+          unitsNeeded: 1,
+          hospitalName: 'Bacha Khan Medical Complex (MTI BKMC)',
+          tehsil: 'Swabi',
+          urgency: 'HIGH',
+          reason: 'Emergency Surgery / Urgent Transfusion'
+        }));
+      }
+    }
+  }, [currentProfile, isOpen, requestFor]);
+
   if (!isOpen) return null;
+
+  const handleRequestForChange = (mode: 'Myself' | 'Relative' | 'Emergency') => {
+    setRequestFor(mode);
+    if (mode === 'Myself' && currentProfile) {
+      setFormData(prev => ({
+        ...prev,
+        patientName: currentProfile.fullName,
+        bloodGroup: currentProfile.bloodGroup,
+        relationship: 'Myself',
+        contactPerson: currentProfile.fullName,
+        contactPhone: currentProfile.phoneNumber,
+        whatsappNumber: currentProfile.whatsappNumber || currentProfile.phoneNumber
+      }));
+    } else if (mode === 'Relative') {
+      setFormData(prev => ({
+        ...prev,
+        patientName: '',
+        relationship: 'Relative',
+        contactPerson: currentProfile ? currentProfile.fullName : prev.contactPerson,
+        contactPhone: currentProfile ? currentProfile.phoneNumber : prev.contactPhone,
+        whatsappNumber: currentProfile ? (currentProfile.whatsappNumber || currentProfile.phoneNumber) : prev.whatsappNumber
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        relationship: 'Emergency Patient',
+        contactPerson: currentProfile ? currentProfile.fullName : prev.contactPerson,
+        contactPhone: currentProfile ? currentProfile.phoneNumber : prev.contactPhone
+      }));
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.patientName || !formData.contactPhone || !formData.contactPerson) {
-      alert('Please fill in Patient Name, Contact Person, and Phone Number.');
+      alert('Please fill in Patient Name, Attendant/Contact Person, and Phone Number.');
       return;
     }
 
@@ -45,6 +127,7 @@ export const RequestBloodModal: React.FC<RequestBloodModalProps> = ({ isOpen, on
     try {
       await addRequest({
         patientName: formData.patientName,
+        relationship: formData.relationship,
         bloodGroup: formData.bloodGroup,
         unitsNeeded: Number(formData.unitsNeeded) || 1,
         hospitalName: formData.hospitalName,
@@ -53,7 +136,8 @@ export const RequestBloodModal: React.FC<RequestBloodModalProps> = ({ isOpen, on
         contactPhone: formData.contactPhone,
         whatsappNumber: formData.whatsappNumber || formData.contactPhone,
         urgency: formData.urgency,
-        reason: formData.reason
+        reason: formData.reason,
+        postedByUid: currentProfile?.uid || undefined
       });
 
       setSuccess(true);
@@ -66,9 +150,9 @@ export const RequestBloodModal: React.FC<RequestBloodModalProps> = ({ isOpen, on
       setTimeout(() => {
         setSuccess(false);
         onClose();
-      }, 2500);
+      }, 2200);
     } catch (err: any) {
-      alert('Failed to post request: ' + err.message);
+      alert('Failed to post SOS appeal: ' + err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -85,8 +169,10 @@ export const RequestBloodModal: React.FC<RequestBloodModalProps> = ({ isOpen, on
               <AlertTriangle className="w-5 h-5 text-amber-300" />
             </div>
             <div>
-              <h2 className="font-bold text-lg text-white">Post Emergency SOS</h2>
-              <p className="text-xs text-red-100">Broadcast blood requirement across Swabi donors</p>
+              <h2 className="font-bold text-lg text-white">Post Emergency Blood SOS</h2>
+              <p className="text-xs text-red-100">
+                Broadcast blood appeal across Swabi donors for yourself or relatives
+              </p>
             </div>
           </div>
           <button 
@@ -102,23 +188,68 @@ export const RequestBloodModal: React.FC<RequestBloodModalProps> = ({ isOpen, on
             <div className="w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-400 mx-auto flex items-center justify-center border border-emerald-500/40">
               <CheckCircle2 className="w-8 h-8" />
             </div>
-            <h3 className="text-xl font-bold text-white">SOS Appeal Published!</h3>
+            <h3 className="text-xl font-bold text-white">Emergency SOS Published!</h3>
             <p className="text-sm text-slate-300">
-              Your blood request is now live in the Swabi Heroes network and synced with the mobile app in real-time.
+              Your blood request for <strong>{formData.patientName} ({formData.bloodGroup})</strong> is now live across the Swabi Heroes network and visible to all active donors.
             </p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+            
+            {/* Quick Mode Toggle: Relative / Myself / General */}
+            <div>
+              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                Who is this blood request for?
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleRequestForChange('Relative')}
+                  className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all ${
+                    requestFor === 'Relative'
+                      ? 'bg-red-600/30 border-red-500 text-white shadow'
+                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                  }`}
+                >
+                  👨‍👩‍👧 Relative / Family
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleRequestForChange('Myself')}
+                  className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all ${
+                    requestFor === 'Myself'
+                      ? 'bg-red-600/30 border-red-500 text-white shadow'
+                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                  }`}
+                >
+                  🙋‍♂️ For Myself
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleRequestForChange('Emergency')}
+                  className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all ${
+                    requestFor === 'Emergency'
+                      ? 'bg-red-600/30 border-red-500 text-white shadow'
+                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                  }`}
+                >
+                  🚑 Other Patient
+                </button>
+              </div>
+            </div>
+
             {/* Blood Group & Units */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
-                  Blood Group Required *
+                  Required Blood Group *
                 </label>
                 <select
                   value={formData.bloodGroup}
                   onChange={(e) => setFormData({ ...formData, bloodGroup: e.target.value as BloodGroup })}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-white font-bold focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-white font-bold text-xs focus:border-red-500 focus:ring-1 focus:ring-red-500"
                 >
                   {BLOOD_GROUPS.map(bg => (
                     <option key={bg} value={bg}>{bg}</option>
@@ -128,7 +259,7 @@ export const RequestBloodModal: React.FC<RequestBloodModalProps> = ({ isOpen, on
 
               <div>
                 <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
-                  Units / Bags Needed *
+                  Bags / Units Needed *
                 </label>
                 <input
                   type="number"
@@ -136,25 +267,42 @@ export const RequestBloodModal: React.FC<RequestBloodModalProps> = ({ isOpen, on
                   max="10"
                   value={formData.unitsNeeded}
                   onChange={(e) => setFormData({ ...formData, unitsNeeded: parseInt(e.target.value) || 1 })}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-white focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-white text-xs focus:border-red-500 focus:ring-1 focus:ring-red-500"
                   required
                 />
               </div>
             </div>
 
-            {/* Patient Name */}
-            <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
-                Patient Name / Case Description *
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. Ahmad Khan / Emergency Patient"
-                value={formData.patientName}
-                onChange={(e) => setFormData({ ...formData, patientName: e.target.value })}
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-white focus:border-red-500 focus:ring-1 focus:ring-red-500"
-                required
-              />
+            {/* Patient Name & Relationship */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                  Patient Name *
+                </label>
+                <input
+                  type="text"
+                  placeholder={requestFor === 'Relative' ? 'e.g. Mother / Uncle Tariq' : 'e.g. Ahmad Khan'}
+                  value={formData.patientName}
+                  onChange={(e) => setFormData({ ...formData, patientName: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-white text-xs focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                  Relationship to Requester
+                </label>
+                <select
+                  value={formData.relationship}
+                  onChange={(e) => setFormData({ ...formData, relationship: e.target.value })}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-white text-xs focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                >
+                  {RELATIONSHIPS.map(rel => (
+                    <option key={rel} value={rel}>{rel}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {/* Hospital & Tehsil */}
@@ -168,7 +316,7 @@ export const RequestBloodModal: React.FC<RequestBloodModalProps> = ({ isOpen, on
                   placeholder="e.g. BKMC Shahmansoor, DHQ Swabi"
                   value={formData.hospitalName}
                   onChange={(e) => setFormData({ ...formData, hospitalName: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-white focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-white text-xs focus:border-red-500 focus:ring-1 focus:ring-red-500"
                   required
                 />
               </div>
@@ -180,7 +328,7 @@ export const RequestBloodModal: React.FC<RequestBloodModalProps> = ({ isOpen, on
                 <select
                   value={formData.tehsil}
                   onChange={(e) => setFormData({ ...formData, tehsil: e.target.value as Tehsil })}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-white focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-white text-xs focus:border-red-500 focus:ring-1 focus:ring-red-500"
                 >
                   {TEHSILS.map(t => (
                     <option key={t} value={t}>{t}</option>
@@ -189,7 +337,7 @@ export const RequestBloodModal: React.FC<RequestBloodModalProps> = ({ isOpen, on
               </div>
             </div>
 
-            {/* Contact Person & Phone */}
+            {/* Attendant Name & Contact Phone */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
@@ -197,10 +345,10 @@ export const RequestBloodModal: React.FC<RequestBloodModalProps> = ({ isOpen, on
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Tariq Khan (Brother)"
+                  placeholder="e.g. Asad Ali (Brother / Son)"
                   value={formData.contactPerson}
                   onChange={(e) => setFormData({ ...formData, contactPerson: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-white focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-white text-xs focus:border-red-500 focus:ring-1 focus:ring-red-500"
                   required
                 />
               </div>
@@ -214,7 +362,7 @@ export const RequestBloodModal: React.FC<RequestBloodModalProps> = ({ isOpen, on
                   placeholder="0300-1234567"
                   value={formData.contactPhone}
                   onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-white focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-white text-xs focus:border-red-500 focus:ring-1 focus:ring-red-500"
                   required
                 />
               </div>
@@ -229,7 +377,7 @@ export const RequestBloodModal: React.FC<RequestBloodModalProps> = ({ isOpen, on
                 <select
                   value={formData.urgency}
                   onChange={(e) => setFormData({ ...formData, urgency: e.target.value as UrgencyLevel })}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-white font-semibold focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-white text-xs font-semibold focus:border-red-500 focus:ring-1 focus:ring-red-500"
                 >
                   <option value="CRITICAL_IMMEDIATE">🔴 Critical Immediate (Within 1 Hour)</option>
                   <option value="HIGH">🟠 High Priority (Today)</option>
@@ -239,14 +387,14 @@ export const RequestBloodModal: React.FC<RequestBloodModalProps> = ({ isOpen, on
 
               <div>
                 <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
-                  Medical Reason
+                  Medical Reason / Notes
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Thalassemia, Delivery, Accident"
+                  placeholder="e.g. Thalassemia, Delivery, Surgery, Accident"
                   value={formData.reason}
                   onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-white focus:border-red-500 focus:ring-1 focus:ring-red-500"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-white text-xs focus:border-red-500 focus:ring-1 focus:ring-red-500"
                 />
               </div>
             </div>
@@ -256,14 +404,14 @@ export const RequestBloodModal: React.FC<RequestBloodModalProps> = ({ isOpen, on
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2.5 rounded-xl border border-slate-700 text-slate-300 hover:bg-slate-800 text-sm font-semibold"
+                className="px-4 py-2.5 rounded-xl border border-slate-700 text-slate-300 hover:bg-slate-800 text-xs font-semibold"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-sm px-6 py-2.5 rounded-xl shadow-lg shadow-red-950 flex items-center gap-2 disabled:opacity-50"
+                className="bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-xs px-6 py-2.5 rounded-xl shadow-lg shadow-red-950 flex items-center gap-2 disabled:opacity-50"
               >
                 <Heart className="w-4 h-4 fill-white" />
                 {isSubmitting ? 'Posting Live...' : 'Publish Emergency SOS'}
